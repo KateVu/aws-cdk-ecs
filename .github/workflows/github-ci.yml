@@ -31,8 +31,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::${aws_account_id}:role/github-actions-demo
-          aws-region: ${REGION}
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          aws-region: ${{ env.REGION }}
       - name: prepare ECR repo name based on the Github repository
         shell: bash
         run: |
@@ -46,7 +46,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
         with:
-          registries: ${aws_account_id}
+          registries: ${{ env.aws_account_id }}
           mask-password: "true" # see: https://github.com/aws-actions/amazon-ecr-login#docker-credentials
 
       # - name: Build, tag, and push image to Amazon ECR
