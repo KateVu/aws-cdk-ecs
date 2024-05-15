@@ -25,7 +25,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -109,7 +109,7 @@ jobs:
       ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
       IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -120,7 +120,7 @@ jobs:
       - name: run synth
         run: |
           npm install
-          cdk synth --require-approval=never
+          npx cdk synth --require-approval=never
 
           # cdk synth --require-approval=never
         

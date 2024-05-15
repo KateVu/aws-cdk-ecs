@@ -151,7 +151,9 @@ export class EcsStack extends Stack {
       cluster,
       taskDefinition,
       securityGroups: [sg],
-      subnetSelection: privateSubnets,
+      subnetSelection: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+      },
       platformVersion: ecs.FargatePlatformVersion.VERSION1_4,
       role: eventsRole,
       containerOverrides: [
