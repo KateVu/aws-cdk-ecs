@@ -32,6 +32,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
       - name: prepare ECR repo name based on the Github repository
         shell: bash
