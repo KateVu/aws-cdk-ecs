@@ -13,6 +13,8 @@ jobs:
       - shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
+    outputs:
+      branch: ${{ steps.extract_branch.outputs.branch }}        
   # Docker image build and publish
   build_docker:
     runs-on: [linux, self-hosted, demo]
@@ -21,9 +23,9 @@ jobs:
       id-token: write
       contents: read
 
-    # outputs:
-    #   image_tag: ${{ steps.build-publish.outputs.image_tag }}
-    #   full_image: ${{ steps.build-publish.outputs.full_image }}
+    outputs:
+      image_tag: ${{ steps.build-publish.outputs.image_tag }}
+      full_image: ${{ steps.build-publish.outputs.full_image }}
 
     steps:
       - uses: actions/checkout@v3
@@ -50,17 +52,17 @@ jobs:
           registries: ${{ env.aws_account_id }}
           mask-password: "true" # see: https://github.com/aws-actions/amazon-ecr-login#docker-credentials
 
-      # - name: Build, tag, and push image to Amazon ECR
-      #   id: build-publish
-      #   shell: bash
-      #   env:
-      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      #     ECR_REPOSITORY: ${{ env.ECR_REPO_NAME }}
-      #     IMAGE_TAG: ${{ inputs.image_tag }}
-      #   run: |
-      #     docker build "${{ inputs.docker_build_dir }}" -f "${{ inputs.path_to_dockerfile }}" -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-      #     docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-      #     echo "IMAGE $IMAGE_TAG is pushed to $ECR_REGISTRY/$ECR_REPOSITORY"
-      #     echo "image_tag=$IMAGE_TAG" 
-      #     echo "full_image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"          
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-publish
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPO_NAME }}
+          IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
+        run: |
+          docker build "./docker_files" -f "./docker_files/Dockerfile" -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "IMAGE $IMAGE_TAG is pushed to $ECR_REGISTRY/$ECR_REPOSITORY"
+          echo "image_tag=$IMAGE_TAG" 
+          echo "full_image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"          
   
