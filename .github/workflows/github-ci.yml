@@ -120,6 +120,7 @@ jobs:
           aws-region: ${{ env.REGION }}
       - name: run synth
         run: |
+          echo ${ECR_REPOSITORY}
           npm install
           npx cdk synth --require-approval=never
 
