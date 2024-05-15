@@ -10,4 +10,4 @@ cdk.context.json
 .DS_Store
 
 # config file for aws account id
-aws_account.yaml
+# aws_account.yaml

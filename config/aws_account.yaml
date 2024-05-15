@@ -1,0 +1,7 @@
+# Maping aws name with the right aws account id
+- name: sandpit1
+  account_id: "722141136946"
+- name: sandpit2
+  account_id: "354334841216"
+- name: sandpit3
+  account_id: "116354729252"
