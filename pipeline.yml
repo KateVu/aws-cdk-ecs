@@ -1,0 +1,93 @@
+env:
+  RQP_REGION: ap-southeast-2
+  RQP_REPOSITORY: ${BUILDKITE_PIPELINE_SLUG}
+  RQP_APPLICATION: ${BUILDKITE_PIPELINE_SLUG}
+  RQP_APPLICATION_VERSION: 1.0.${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_BRANCH}
+  RQP_LINE_OF_BUSINESS: ${RQP_LINE_OF_BUSINESS:-core}
+  RQP_ZONE: 'sorau'
+  WHICS_ENV: ${WHICS_ENV:-auto}
+  RQP_STAGE: ${RQP_STAGE:-kaos}
+  USAGE: ${USAGE:-undefined}
+
+steps:
+  - name: "Ensure CDK Integrity"
+    command: echo "Ensure CDK Integrity..."
+    plugins:
+      - ssh://git@github.com/nib-group/github-packages-buildkite-plugin.git#v1.5.0:
+          action: auth
+          registry: npm
+          npm-package-root: .rqp/deploy
+      - ssh://git@github.com/nib-group/image-pull-buildkite-plugin.git#v2.2.0:
+          registries: ecr
+      - ssh://git@github.com/nib-group/rqp-cdk-buildkite-plugin.git#v3.2.0:
+          npm-commands:
+            - npm install
+            - npm run build            
+            - npm run test
+            - npm run lint
+          upload-artifacts: true
+          post-deploy-hook: ../../.buildkite/scripts/generate-rqp-slice.sh
+    agents:
+      queue: elastic
+
+  - wait
+  
+  - name: ':docker: Build and Publish'
+    command: docker build --no-cache --rm -t ${RQP_APPLICATION} .
+    plugins:
+      - ssh://git@github.com/nib-group/image-publish-buildkite-plugin.git#v4.0.0
+    agents:
+      queue: elastic
+
+  - wait
+
+  - name: ':rocket: Deploy to ${RQP_STAGE}-${RQP_ZONE}'
+    command: echo "Deploying to ${RQP_STAGE}-${RQP_ZONE}..."
+    plugins:
+      - ssh://git@github.com/nib-group/github-packages-buildkite-plugin.git#v1.5.0:
+          action: auth
+          registry: npm
+          npm-package-root: .rqp/deploy
+      - ssh://git@github.com/nib-group/image-pull-buildkite-plugin.git#v2.2.0:
+          registries: 'dockerhub,ecr'
+      - ssh://git@github.com/nib-group/assume-deployer-role-buildkite-plugin.git#v3.4.1:
+      - ssh://git@github.com/nib-group/rqp-cdk-buildkite-plugin.git#v3.2.0:
+          action: deploy
+          existing-artifacts: true
+          cdk-entrypoint: src/index.ts
+          docker-env:
+            - WHICS_ENV
+            - USAGE
+            - BUILDKITE_BUILD_CREATOR
+            - BUILDKITE_BRANCH
+            - BUILDKITE_BUILD_URL
+            - BUILDKITE_TRIGGERED_FROM_BUILD_NUMBER
+            - BUILDKITE_TRIGGERED_FROM_BUILD_PIPELINE_SLUG
+    agents:
+      queue: elastic
+    concurrency: 1
+    concurrency_group: "${BUILDKITE_PIPELINE_SLUG}/deploy-${BUILDKITE_BRANCH}-to-${RQP_STAGE}-${RQP_ZONE}"      
+
+  - block: "Clean up non-master stack?"
+    branches: '!master'
+  - wait
+
+  - name: ':bomb: Destroy ${RQP_STAGE}-${RQP_ZONE}'
+    branches: '!master'
+    command: echo "Destroying stack in ${RQP_STAGE}-${RQP_ZONE}..."
+    plugins:
+      - ssh://git@github.com/nib-group/github-packages-buildkite-plugin.git#v1.3.1:
+          action: auth
+          registry: npm
+          npm-package-root: .rqp/deploy
+      - ssh://git@github.com/nib-group/assume-deployer-role-buildkite-plugin.git#v3.4.1:
+      - ssh://git@github.com/nib-group/image-pull-buildkite-plugin.git#v2.2.0:
+          registries: ecr
+      - ssh://git@github.com/nib-group/rqp-cdk-buildkite-plugin.git#v2.0.0:
+          cdk-entrypoint: src/index.ts
+          action: destroy
+          existing-artifacts: true
+    agents:
+      queue: elastic
+    concurrency: 1
+    concurrency_group: "${BUILDKITE_PIPELINE_SLUG}/deploy-${BUILDKITE_BRANCH}-to-${RQP_STAGE}-${RQP_ZONE}"
