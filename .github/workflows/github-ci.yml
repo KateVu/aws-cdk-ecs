@@ -40,7 +40,8 @@ jobs:
   # Docker image build and publish
   build_docker:
     runs-on: [linux, self-hosted, demo]
-    needs: 
+    needs:
+      - get_branch_name
       - build_and_test
     permissions:
       id-token: write
@@ -95,7 +96,9 @@ jobs:
     runs-on: [linux, self-hosted, demo]
     container:
       image: 'node:20'
-    needs: build_docker
+    needs: 
+      - get_branch_name
+      - build_docker
     permissions:
       id-token: write
       contents: read
