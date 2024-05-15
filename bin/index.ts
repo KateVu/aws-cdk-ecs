@@ -2,7 +2,7 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { getAccountId } from '../lib/utils';
-import { Ec2InstanceStack } from '../lib/ec2';
+import { EcsStack } from '../lib/ecs';
 
 //Environment variable for yaml file path and file name
 const configFolder = '../config/'
@@ -18,7 +18,7 @@ const accountId = getAccountId(accountName, configFolder, accountFileName)
 
 const app = new cdk.App();
 
-const ec2Instance = new Ec2InstanceStack(app, 'Ec2InstanceTest', {
+const ecsAppStack = new EcsStack(app, 'Ec2InstanceTest', {
   stackName: `ec2-efs-${envName}`,
   region: region,
   accountId: accountId,
@@ -26,7 +26,7 @@ const ec2Instance = new Ec2InstanceStack(app, 'Ec2InstanceTest', {
   envName: envName,
 })
 
-cdk.Tags.of(ec2Instance).add('createdby', 'KateVu')
-cdk.Tags.of(ec2Instance).add('createdvia', 'AWS-CDK')
-cdk.Tags.of(ec2Instance).add('environment', envName)
-cdk.Tags.of(ec2Instance).add('repo', 'https://github.com/KateVu/aws-cdk-ec2-efs')
+cdk.Tags.of(ecsAppStack).add('createdby', 'KateVu')
+cdk.Tags.of(ecsAppStack).add('createdvia', 'AWS-CDK')
+cdk.Tags.of(ecsAppStack).add('environment', envName)
+cdk.Tags.of(ecsAppStack).add('repo', 'https://github.com/KateVu/aws-cdk-ecs')

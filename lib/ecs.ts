@@ -6,7 +6,10 @@ import * as efs from 'aws-cdk-lib/aws-efs'
 import * as assets from 'aws-cdk-lib/aws-s3-assets'
 import * as core from 'aws-cdk-lib/core'
 import * as ecs from 'aws-cdk-lib/aws-ecs'
-
+import * as ecr from 'aws-cdk-lib/aws-ecr'
+import * as eventTarget from 'aws-cdk-lib/aws-events-targets'
+import * as events from 'aws-cdk-lib/aws-events'
+import * as sns from 'aws-cdk-lib/aws-sns'
 
 import * as path from 'path'
 
@@ -34,37 +37,8 @@ export class EcsStack extends Stack {
             vpcName: `vpc-${accountName}`
         })
 
-
-        // const efsFileSystem = new efs.FileSystem(this, 'efsFileSystem', {
-        //     vpc: vpc,
-        //     encrypted: true, // file system is not encrypted by default
-        //     performanceMode: efs.PerformanceMode.GENERAL_PURPOSE, // default
-        //     vpcSubnets: {
-        //         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
-        //     },
-        //     securityGroup: sgEFS,
-        // })
-        // efsFileSystem.applyRemovalPolicy( core.RemovalPolicy.DESTROY )
-
-        // const Ec2Instance = new ec2.Instance(this, 'simple ec2', {
-        //     vpc: vpc,
-        //     role: role,
-        //     securityGroup: sgEc2,
-        //     vpcSubnets: {
-        //         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
-        //     },
-
-        //     instanceName: 'test instance',
-        //     instanceType: ec2.InstanceType.of( // t2.micro has free tier usage in aws
-        //         ec2.InstanceClass.T2,
-        //         ec2.InstanceSize.MICRO
-        //     ),
-        //     machineImage: ec2.MachineImage.latestAmazonLinux2({
-        //     }),
-        // })
-
     //Task Execution Role
-    const executionRole = new iam.Role(this, 'executionRole', {
+    const ecsExecutionRole = new iam.Role(this, 'executionRole', {
         assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
@@ -74,7 +48,7 @@ export class EcsStack extends Stack {
     /**
      * Permission for ecs task
      */
-    const taskRole = new iam.Role(this, 'taskRole', {
+    const ecsTaskRole = new iam.Role(this, 'taskRole', {
         assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
@@ -82,7 +56,7 @@ export class EcsStack extends Stack {
     })      
 
     //Bucket policy to allow read+write
-    taskRole.addToPolicy(new iam.PolicyStatement({
+    ecsTaskRole.addToPolicy(new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: [
           's3:Get*',
@@ -90,9 +64,144 @@ export class EcsStack extends Stack {
           's3:PutObject*'
         ],
         resources: [
-          'bucketArn',
-          `bucketArn/*`
+          `${bucketName}`,
+          `${bucketName}/*`
         ]
-    }))    
+    }))
+
+
+    //Events bridge rule role
+    const eventsRole = new iam.Role(this, 'eventsRuleRole', {
+      assumedBy: new iam.ServicePrincipal('events.amazonaws.com')
+    })
+    eventsRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceEventsRole'))
+   
+    //Granting ECS role permission
+    ecsExecutionRole.grantPassRole(eventsRole)
+    ecsTaskRole.grantPassRole(eventsRole)
+    const importedFileSystemID = process.env.FILE_SYSTEM_ID || ''
+    if (importedFileSystemID == '') {
+      throw new Error(`Cannot find EFS File system ID`)
+    }
+
+    /**
+     * Task definition
+     */
+    const taskDefinition = new ecs.FargateTaskDefinition(this, 'taskDefinition', {
+      //4GB Ram - Between 4096 (4 GB) and 16384 (16 GB) in increments of 1024 (1 GB) - Available cpu values: 2048 (2 vCPU)
+      memoryLimitMiB: 4096,
+      //2 vCPU
+      cpu: 2048,
+      taskRole: ecsTaskRole,
+      executionRole: ecsExecutionRole,
+      volumes: [
+        {
+          name: "efs",
+          efsVolumeConfiguration: {
+            fileSystemId: importedFileSystemID,
+            // ... other options here ...
+          },
+        }
+      ]
+    })
+    
+    const ecrRepoName = process.env.ECR_REPOSITORY || ''
+    if (ecrRepoName == '') {
+      throw new Error(`Cannot find ECR_REPOSITORY`)
+    }
+
+    const ecrRepo = ecr.Repository.fromRepositoryName(this, 'ecrrepo', ecrRepoName)
+
+    const imageTags = process.env.IMAGE_TAG || 'none'
+
+    /**
+     * Containter
+     */
+    const container = taskDefinition.addContainer('taskDefinitionContainer', {
+      image: new ecs.EcrImage(ecrRepo, imageTags),
+      environment: {
+      },
+      logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'ecs' }),
+    })
+
+    container.addMountPoints(
+      {
+        sourceVolume: 'efs',
+        containerPath: '/mnt/data',
+        readOnly: false        
+      }
+    )
+
+    //Cluster
+    const cluster = new ecs.Cluster(this, 'cluster', {
+      vpc
+    })
+
+    //Security Group
+    const sg = new ec2.SecurityGroup(this, 'EcsEgressSg', {
+      vpc,
+      allowAllOutbound: true,
+      description: 'Allows all outbound traffic to facilitate s3Copy'
+    })
+
+    /**
+     * Events Bridge spins up ECS Task for archive bucket
+     */
+    const targetArchive = new eventTarget.EcsTask({
+      cluster,
+      taskDefinition,
+      securityGroups: [sg],
+      subnetSelection: privateSubnets,
+      platformVersion: ecs.FargatePlatformVersion.VERSION1_4,
+      role: eventsRole,
+      containerOverrides: [
+        {
+          containerName: container.containerName,
+          environment: [
+          ]
+        },
+      ],
+      propagateTags: ecs.PropagatedTagSource.TASK_DEFINITION
+    })
+    /**
+     * Cron job trigger backup to archive bucket
+     */
+    new events.Rule(this, "cronJobTriggerArchive", {
+      //1:00AM AEST - temporary
+      schedule: events.Schedule.cron({minute: '0', hour: '15'}),
+      targets: [targetArchive],
+      description: 'Runs daily at specific time',
+    })
+
+    /**
+     * Event bridge rule for failed AWS Batch which has SNS above as target
+     * Copy rqp-rds-backups-to-s3 repo
+     */
+    const filterFailedECSRule = new events.Rule(this, "filterFailedEFSBackup", {
+      eventPattern: {
+        source: ["aws.ecs"],
+        detailType: ["ECS Task State Change"],
+        detail: {
+          "containers": {
+            "exitCode": [1, 137, 139, 255]
+          },
+          "lastStatus": [
+            "STOPPED"
+          ],
+          "stoppedReason":[
+            "Essential container in task exited"
+          ],
+          "taskDefinitionArn": [
+            taskDefinition.taskDefinitionArn
+          ]
+        }
+      },
+      description: 'Filters for failed ECS tasks'
+    })
+
+  //   const snsTopic = sns.Topic.fromTopicArn(this, 'failedSNSTopic', snstopicsArn)
+  //   //Add SNS as target
+  //   filterFailedECSRule.addTarget(new eventTarget.SnsTopic(snsTopic))    
+  // }    
 }
 }

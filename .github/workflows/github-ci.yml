@@ -41,7 +41,6 @@ jobs:
   build_docker:
     runs-on: [linux, self-hosted, demo]
     needs: 
-      - get_branch_name
       - build_and_test
     permissions:
       id-token: write
@@ -50,6 +49,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.build-publish.outputs.image_tag }}
       full_image: ${{ steps.build-publish.outputs.full_image }}
+      repository: ${{ steps.get_repo_name.outputs.ECR_REPO_NAME }}
 
     steps:
       - uses: actions/checkout@v3
@@ -61,6 +61,7 @@ jobs:
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
       - name: prepare ECR repo name based on the Github repository
+        id: get_repo_name
         shell: bash
         run: |
           set -eux
@@ -90,3 +91,33 @@ jobs:
           echo "image_tag=$IMAGE_TAG" 
           echo "full_image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"          
   
+  synth:
+    runs-on: [linux, self-hosted, demo]
+    container:
+      image: 'node:20'
+    needs: build_docker
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      ENVIRONMENT_NAME: 'demo'
+      ACCOUNT_NAME: 'sandpit1'
+      REGION: 'ap-southeast-2'    
+      ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
+      IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.REGION }}
+      - name: run synth
+        run: |
+          npm install
+          cdk synth --require-approval=never
+
+          # cdk synth --require-approval=never
+        
