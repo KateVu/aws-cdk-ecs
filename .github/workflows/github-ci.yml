@@ -14,11 +14,35 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
     outputs:
-      branch: ${{ steps.extract_branch.outputs.branch }}        
+      branch: ${{ steps.extract_branch.outputs.branch }}
+
+  build_and_test:
+    runs-on: [linux, self-hosted, demo]
+    container:
+      image: 'node:20'
+    needs: get_branch_name
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.REGION }}
+      - name: run build
+        run: |
+          npm install
+
   # Docker image build and publish
   build_docker:
     runs-on: [linux, self-hosted, demo]
-    needs: get_branch_name
+    needs: 
+      - get_branch_name
+      - build_and_test
     permissions:
       id-token: write
       contents: read
