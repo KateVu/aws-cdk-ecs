@@ -19,7 +19,7 @@ interface EcsStackPros extends StackProps {
 
 export class EcsStack extends Stack {
     constructor(scope: Construct, id: string, props: EcsStackPros) {
-        const { region, accountId, accountName } = props
+        const { region, accountId, accountName, envName } = props
         const updatedProps = {
             env: {
                 region: region,
@@ -142,9 +142,9 @@ export class EcsStack extends Stack {
     })
 
     /**
-     * Events Bridge spins up ECS Task for archive bucket
+     * Events Bridge spins up ECS Task
      */
-    const targetArchive = new eventTarget.EcsTask({
+    const target = new eventTarget.EcsTask({
       cluster,
       taskDefinition,
       securityGroups: [sg],
@@ -157,6 +157,12 @@ export class EcsStack extends Stack {
         {
           containerName: container.containerName,
           environment: [
+            {
+              name: 'S3_BUCKET', value:  bucketName
+            },
+            {
+              name: 'ENVIRONMENT_NAME', value:  envName
+            },
           ]
         },
       ],
@@ -168,7 +174,7 @@ export class EcsStack extends Stack {
     new events.Rule(this, "cronJobTriggerArchive", {
       //1:00AM AEST - temporary
       schedule: events.Schedule.cron({minute: '0', hour: '15'}),
-      targets: [targetArchive],
+      targets: [target],
       description: 'Runs daily at specific time',
     })
 
