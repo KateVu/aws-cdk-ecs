@@ -2,9 +2,6 @@ import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as iam from 'aws-cdk-lib/aws-iam'
-import * as efs from 'aws-cdk-lib/aws-efs'
-import * as assets from 'aws-cdk-lib/aws-s3-assets'
-import * as core from 'aws-cdk-lib/core'
 import * as ecs from 'aws-cdk-lib/aws-ecs'
 import * as ecr from 'aws-cdk-lib/aws-ecr'
 import * as eventTarget from 'aws-cdk-lib/aws-events-targets'
@@ -201,9 +198,8 @@ export class EcsStack extends Stack {
       description: 'Filters for failed ECS tasks'
     })
 
-  //   const snsTopic = sns.Topic.fromTopicArn(this, 'failedSNSTopic', snstopicsArn)
-  //   //Add SNS as target
-  //   filterFailedECSRule.addTarget(new eventTarget.SnsTopic(snsTopic))    
-  // }    
+    const snsTopic = sns.Topic.fromTopicArn(this, 'failedSNSTopic', `arn:aws:sns:${region}::aws-cdk-ecs-demo`)
+    //Add SNS as target
+    filterFailedECSRule.addTarget(new eventTarget.SnsTopic(snsTopic))    
 }
 }

@@ -1,5 +1,6 @@
 //github-actions-demo
-
+//For the provider URL: Use https://token.actions.githubusercontent.com
+//For the "Audience": Use sts.amazonaws.com if you are using the official action.
 {
     "Version": "2012-10-17",
     "Statement": [
