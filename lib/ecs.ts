@@ -198,7 +198,7 @@ export class EcsStack extends Stack {
       description: 'Filters for failed ECS tasks'
     })
 
-    const snsTopic = sns.Topic.fromTopicArn(this, 'failedSNSTopic', `arn:aws:sns:${region}::aws-cdk-ecs-demo`)
+    const snsTopic = sns.Topic.fromTopicArn(this, 'failedSNSTopic', `arn:aws:sns:${region}:${accountId}:aws-cdk-ecs-demo`)
     //Add SNS as target
     filterFailedECSRule.addTarget(new eventTarget.SnsTopic(snsTopic))    
 }
