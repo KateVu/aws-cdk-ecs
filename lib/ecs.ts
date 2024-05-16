@@ -29,7 +29,7 @@ export class EcsStack extends Stack {
         }
         super(scope, id, updatedProps)
 
-        const bucketName = 'aws-cdk-ecs-output'
+        const bucketName = `aws-cdk-ecs-output-${accountName}`
         const vpc = ec2.Vpc.fromLookup(this, 'vpc', {
             vpcName: `vpc-${accountName}`
         })
@@ -61,8 +61,8 @@ export class EcsStack extends Stack {
           's3:PutObject*'
         ],
         resources: [
-          `${bucketName}`,
-          `${bucketName}/*`
+          `arn:aws:s3:::${bucketName}`,
+          `arn:aws:s3:::${bucketName}/*`
         ]
     }))
 
