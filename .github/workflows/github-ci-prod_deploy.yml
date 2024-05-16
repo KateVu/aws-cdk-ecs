@@ -17,7 +17,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}-pipeline
 jobs:
   deploy_prod:
     runs-on: [linux, self-hosted, demo]
-    if: github.ref != 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     container:
       image: 'node:20'
     permissions:
@@ -26,7 +26,7 @@ jobs:
     env:
       ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
       ACCOUNT_NAME: 'sandpit1'
-      aws_account_id: '722141136946' 
+      aws_account_id: '354334841216' 
       ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
       IMAGE_TAG: ${{ inputs.BRANCH }}-${{ github.run_id }}
       FILE_SYSTEM_ID: 'fs-0bf5947b7d10d7df6'

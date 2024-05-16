@@ -1,6 +1,14 @@
 name: aws-cdk-ecs-demo-pipeline
 run-name: aws-cdk-ecs-demo-pipeline-${{ github.ref }}
-on: [push, workflow_dispatch]
+on: 
+  push:
+  workflow_dispatch:
+    inputs:
+      DESTROY:
+        required: false
+        type: string
+        default: 'false'
+
 env:
   REGION: 'ap-southeast-2'
 concurrency: ${{ github.workflow }}-${{ github.ref }}-pipeline
@@ -99,38 +107,6 @@ jobs:
           echo "image_tag=$IMAGE_TAG" 
           echo "full_image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"          
 
-  # synth_dev:
-  #   runs-on: [linux, self-hosted, demo]
-  #   container:
-  #     image: 'node:20'
-  #   needs: 
-  #     - get_branch_name
-  #     - build_docker
-  #   permissions:
-  #     id-token: write
-  #     contents: read
-  #   env:
-  #     ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
-  #     ACCOUNT_NAME: 'sandpit1'
-  #     aws_account_id: '722141136946' 
-  #     ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
-  #     IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
-  #     FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - name: Configure AWS Credentials
-  #       uses: aws-actions/configure-aws-credentials@v2
-  #       with:
-  #         role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
-  #         role-session-name: GitHub_to_AWS_via_FederatedOIDC
-  #         aws-region: ${{ env.REGION }}
-  #     - name: run synth
-  #       run: |
-  #         echo ${ECR_REPOSITORY}
-  #         npm install
-  #         npx cdk synth --require-approval=never
-
   deploy_dev:
     runs-on: [linux, self-hosted, demo]
     container:
@@ -163,49 +139,68 @@ jobs:
           npm install
           npx cdk deploy --require-approval=never
 
-
-      
-  # destroy_dev:
-  #   runs-on: [linux, self-hosted, demo]
-  #   if: github.ref != 'refs/heads/main'
-  #   container:
-  #     image: 'node:20'
-  #   needs: 
-  #     - get_branch_name
-  #     - build_docker
-  #   permissions:
-  #     id-token: write
-  #     contents: read
-  #   env:
-  #     ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
-  #     ACCOUNT_NAME: 'sandpit1'
-  #     aws_account_id: '722141136946' 
-  #     ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
-  #     IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
-  #     FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - name: Configure AWS Credentials
-  #       uses: aws-actions/configure-aws-credentials@v2
-  #       with:
-  #         role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
-  #         role-session-name: GitHub_to_AWS_via_FederatedOIDC
-  #         aws-region: ${{ env.REGION }}
-  #     - name: run synth
-  #       run: |
-  #         echo ${ECR_REPOSITORY}
-  #         npm install
-  #         npx cdk destroy --require-approval=never
-
-  deploy_prod:
-    if: github.ref == 'refs/heads/main'
+  destroy_dev:
+    runs-on: [linux, self-hosted, demo]
+    if: github.ref != 'refs/heads/main' && ${{ inputs.DESTROY }} == 'true'
+    container:
+      image: 'node:20'
     needs: 
       - get_branch_name
       - build_docker
-      - deploy_dev
-    uses: ./.github/workflows/github-ci-prod_deploy.yml
-    with: 
+    permissions:
+      id-token: write
+      contents: read
+    env:
       ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
+      ACCOUNT_NAME: 'sandpit1'
+      aws_account_id: '722141136946' 
       ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
-      BRANCH: ${{ needs.get_branch_name.outputs.branch }}
+      IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
+      FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.REGION }}
+      - name: run synth
+        run: |
+          echo ${ECR_REPOSITORY}
+          npm install
+          npx cdk destroy --require-approval=never
+
+
+  deploy_prod:
+    runs-on: [linux, self-hosted, demo]
+    container:
+      image: 'node:20'
+    needs: 
+      - get_branch_name
+      - build_docker
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
+      ACCOUNT_NAME: 'sandpit2'
+      aws_account_id: '354334841216' 
+      ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
+      IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
+      FILE_SYSTEM_ID: 'fs-0bf5947b7d10d7df6'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.REGION }}
+      - name: deploy
+        run: |
+          echo ${ECR_REPOSITORY}
+          npm install
+          npx cdk deploy --require-approval=never          
