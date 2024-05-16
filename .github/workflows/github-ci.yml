@@ -99,37 +99,37 @@ jobs:
           echo "image_tag=$IMAGE_TAG" 
           echo "full_image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"          
 
-  synth_dev:
-    runs-on: [linux, self-hosted, demo]
-    container:
-      image: 'node:20'
-    needs: 
-      - get_branch_name
-      - build_docker
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
-      ACCOUNT_NAME: 'sandpit1'
-      aws_account_id: '722141136946' 
-      ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
-      IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
-      FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'
-    steps:
-      - uses: actions/checkout@v4
+  # synth_dev:
+  #   runs-on: [linux, self-hosted, demo]
+  #   container:
+  #     image: 'node:20'
+  #   needs: 
+  #     - get_branch_name
+  #     - build_docker
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   env:
+  #     ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
+  #     ACCOUNT_NAME: 'sandpit1'
+  #     aws_account_id: '722141136946' 
+  #     ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
+  #     IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
+  #     FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: ${{ env.REGION }}
-      - name: run synth
-        run: |
-          echo ${ECR_REPOSITORY}
-          npm install
-          npx cdk synth --require-approval=never
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+  #         role-session-name: GitHub_to_AWS_via_FederatedOIDC
+  #         aws-region: ${{ env.REGION }}
+  #     - name: run synth
+  #       run: |
+  #         echo ${ECR_REPOSITORY}
+  #         npm install
+  #         npx cdk synth --require-approval=never
 
   deploy_dev:
     runs-on: [linux, self-hosted, demo]
@@ -157,7 +157,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
-      - name: run synth
+      - name: deploy
         run: |
           echo ${ECR_REPOSITORY}
           npm install

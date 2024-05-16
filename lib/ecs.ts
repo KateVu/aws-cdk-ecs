@@ -29,13 +29,13 @@ export class EcsStack extends Stack {
         }
         super(scope, id, updatedProps)
 
-        const bucketName = 'output-katetest'
+        const bucketName = 'aws-cdk-ecs-output'
         const vpc = ec2.Vpc.fromLookup(this, 'vpc', {
             vpcName: `vpc-${accountName}`
         })
 
     //Task Execution Role
-    const ecsExecutionRole = new iam.Role(this, 'executionRole', {
+    const ecsExecutionRole = new iam.Role(this, 'ecsExecutionRole', {
         assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
@@ -45,7 +45,7 @@ export class EcsStack extends Stack {
     /**
      * Permission for ecs task
      */
-    const ecsTaskRole = new iam.Role(this, 'taskRole', {
+    const ecsTaskRole = new iam.Role(this, 'ecsTaskRole', {
         assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
