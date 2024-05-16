@@ -1,6 +1,6 @@
 name: deploy-prod
 on: 
-  workflow_dispatch:
+  workflow_call:
     inputs:
       ENVIRONMENT_NAME:
         required: true
@@ -11,9 +11,6 @@ on:
       BRANCH:
         required: true
         type: string
-      # FILE_SYSTEM_ID:
-      #   required: true
-      #   type: string                
 env:
   REGION: 'ap-southeast-2'
 concurrency: ${{ github.workflow }}-${{ github.ref }}-pipeline
