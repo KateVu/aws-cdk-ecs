@@ -22,7 +22,7 @@ jobs:
     outputs:
       branch: ${{ steps.extract_branch.outputs.branch }}
 
-  build_and_test:
+  build:
     runs-on: [linux, self-hosted, demo]
     container:
       image: 'node:20'
@@ -53,7 +53,7 @@ jobs:
     runs-on: [linux, self-hosted, demo]
     needs:
       - get_branch_name
-      - build_and_test
+      - build
     permissions:
       id-token: write
       contents: read
@@ -113,6 +113,7 @@ jobs:
       image: 'node:20'
     needs: 
       - get_branch_name
+      - build
       - build_docker
     permissions:
       id-token: write
@@ -146,7 +147,9 @@ jobs:
       image: 'node:20'
     needs: 
       - get_branch_name
+      - build
       - build_docker
+      - deploy_dev
     permissions:
       id-token: write
       contents: read
@@ -179,7 +182,9 @@ jobs:
       image: 'node:20'
     needs: 
       - get_branch_name
+      - build
       - build_docker
+      - deploy_dev
     permissions:
       id-token: write
       contents: read
