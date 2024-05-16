@@ -163,6 +163,8 @@ jobs:
           npm install
           npx cdk deploy --require-approval=never
 
+
+      
   # destroy_dev:
   #   runs-on: [linux, self-hosted, demo]
   #   if: github.ref != 'refs/heads/main'
@@ -195,3 +197,15 @@ jobs:
   #         echo ${ECR_REPOSITORY}
   #         npm install
   #         npx cdk destroy --require-approval=never
+
+  deploy_prod:
+    if: github.ref == 'refs/heads/main'
+    needs: 
+      - get_branch_name
+      - build_docker
+      - deploy_dev
+    uses: ./.github/workflows/github-ci-prod_deploy.yml
+    with: 
+      ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
+      ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
+      BRANCH: ${{ needs.get_branch_name.outputs.branch }}

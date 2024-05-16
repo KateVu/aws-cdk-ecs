@@ -32,7 +32,7 @@ jobs:
       aws_account_id: '722141136946' 
       ECR_REPOSITORY: ${{ inputs.ECR_REPOSITORY }}
       IMAGE_TAG: ${{ inputs.BRANCH }}-${{ github.run_id }}
-      FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'
+      FILE_SYSTEM_ID: 'fs-0bf5947b7d10d7df6'
     steps:
       - uses: actions/checkout@v4
 
