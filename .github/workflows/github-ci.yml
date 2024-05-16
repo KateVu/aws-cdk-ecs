@@ -1,10 +1,7 @@
 name: aws-cdk-ecs-demo-pipeline
 on: [push, workflow_dispatch]
 env:
-  ENVIRONMENT_NAME: 'demo'
-  ACCOUNT_NAME: 'sandpit1'
   REGION: 'ap-southeast-2'
-  aws_account_id: '722141136946'
 concurrency: ${{ github.workflow }}-${{ github.ref }}-pipeline
 jobs:
   get_branch_name:
@@ -24,6 +21,11 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    env:
+      ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
+      REGION: 'ap-southeast-2'
+      ACCOUNT_NAME: 'sandpit1'
+      aws_account_id: '722141136946' 
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +48,10 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    env:
+      ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
+      ACCOUNT_NAME: 'sandpit3'
+      aws_account_id: '054671736399' 
 
     outputs:
       image_tag: ${{ steps.build-publish.outputs.image_tag }}
@@ -92,7 +98,7 @@ jobs:
           echo "image_tag=$IMAGE_TAG" 
           echo "full_image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"          
 
-  synth:
+  synth_dev:
     runs-on: [linux, self-hosted, demo]
     container:
       image: 'node:20'
@@ -103,9 +109,9 @@ jobs:
       id-token: write
       contents: read
     env:
-      ENVIRONMENT_NAME: 'demo'
+      ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
       ACCOUNT_NAME: 'sandpit1'
-      REGION: 'ap-southeast-2'    
+      aws_account_id: '722141136946' 
       ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
       IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
       FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'

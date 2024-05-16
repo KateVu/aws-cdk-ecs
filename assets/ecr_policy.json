@@ -1,0 +1,39 @@
+{
+
+    "Version": "2012-10-17",
+  
+    "Statement": [
+  
+      {
+  
+        "Sid": "AllowPull-katevu_aws-cdk-ecs",
+  
+        "Effect": "Allow",
+  
+        "Principal": {
+            "AWS": [
+                "arn:aws:iam::722141136946:root",
+                "arn:aws:iam::354334841216:root",
+                "arn:aws:iam::054671736399:root"
+            ]            
+        },
+  
+        "Action": [
+  
+          "ecr:BatchCheckLayerAvailability",
+  
+          "ecr:BatchGetImage",
+  
+          "ecr:DescribeImages",
+  
+          "ecr:DescribeRepositories",
+  
+          "ecr:GetDownloadUrlForLayer"
+  
+        ]
+  
+      }
+  
+    ]
+  
+}
