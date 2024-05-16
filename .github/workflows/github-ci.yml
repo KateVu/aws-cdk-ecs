@@ -172,7 +172,7 @@ jobs:
 
   deploy_prod:
     runs-on: [linux, self-hosted, demo]
-    if: github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/main'
     container:
       image: 'node:20'
     needs: 
