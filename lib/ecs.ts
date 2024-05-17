@@ -107,7 +107,8 @@ export class EcsStack extends Stack {
       throw new Error(`Cannot find ECR_REPOSITORY`)
     }
 
-    const ecrRepo = ecr.Repository.fromRepositoryName(this, 'ecrrepo', ecrRepoName)
+    // const ecrRepo = ecr.Repository.fromRepositoryName(this, 'ecrrepo', ecrRepoName)
+    const ecrRepo = ecr.Repository.fromRepositoryArn(this, 'ecrrepo', `arn:aws:ecr:${region}:054671736399:${ecrRepoName}`)
 
     const imageTags = process.env.IMAGE_TAG || 'none'
 
