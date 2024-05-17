@@ -136,11 +136,13 @@ export class EcsStack extends Stack {
     })
 
     //Security Group
-    const sg = new ec2.SecurityGroup(this, 'EcsEgressSg', {
+    const sg = new ec2.SecurityGroup(this, 'EcsSg', {
       vpc,
       allowAllOutbound: true,
       description: 'Allows all outbound traffic to facilitate s3Copy'
     })
+
+    sg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(2049), 'data within the vpc')
 
     /**
      * Events Bridge spins up ECS Task
@@ -189,7 +191,7 @@ export class EcsStack extends Stack {
         detailType: ["ECS Task State Change"],
         detail: {
           "containers": {
-            "exitCode": [1, 137, 139, 255]
+            "exitCode": [1, 32, 137, 139, 255]
           },
           "lastStatus": [
             "STOPPED"
