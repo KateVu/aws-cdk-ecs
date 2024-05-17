@@ -170,6 +170,7 @@ export class EcsStack extends Stack {
       cluster,
       taskDefinition,
       securityGroups: [sg],
+      assignPublicIp: false,
       subnetSelection: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
       },
