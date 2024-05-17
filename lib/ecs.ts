@@ -108,7 +108,7 @@ export class EcsStack extends Stack {
     }
 
     // const ecrRepo = ecr.Repository.fromRepositoryName(this, 'ecrrepo', ecrRepoName)
-    const ecrRepo = ecr.Repository.fromRepositoryArn(this, 'ecrrepo', `arn:aws:ecr:${region}:054671736399:${ecrRepoName}`)
+    const ecrRepo = ecr.Repository.fromRepositoryArn(this, 'ecrrepo', `arn:aws:ecr:${region}:054671736399:repository/${ecrRepoName}`)
 
     const imageTags = process.env.IMAGE_TAG || 'none'
 
