@@ -19,7 +19,7 @@ const accountId = getAccountId(accountName, configFolder, accountFileName)
 const app = new cdk.App();
 
 const ecsAppStack = new EcsStack(app, 'Ec2InstanceTest', {
-  stackName: `ec2-efs-${envName}`,
+  stackName: `aws-cdk-ecs-${envName}`,
   region: region,
   accountId: accountId,
   accountName: accountName,
