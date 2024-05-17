@@ -118,7 +118,7 @@ jobs:
       aws_account_id: '722141136946' 
       ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
       IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
-      FILE_SYSTEM_ID: 'fs-07daaa2a11a487e56'
+      FILE_SYSTEM_ID: 'fs-0683d8231fda0fe4b'
     steps:
       - uses: actions/checkout@v4
 
