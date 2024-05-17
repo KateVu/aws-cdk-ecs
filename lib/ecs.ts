@@ -42,6 +42,16 @@ export class EcsStack extends Stack {
       ],
     })
 
+    ecsExecutionRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'elasticfilesystem:DescribeMountTargets',
+        'elasticfilesystem:ClientMount',
+        'elasticfilesystem:ClientWrite'
+      ],
+      resources: ['*'],
+    }))
+
     /**
      * Permission for ecs task
      */
