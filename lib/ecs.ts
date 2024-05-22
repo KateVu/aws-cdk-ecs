@@ -8,71 +8,88 @@ import * as eventTarget from 'aws-cdk-lib/aws-events-targets'
 import * as events from 'aws-cdk-lib/aws-events'
 import * as sns from 'aws-cdk-lib/aws-sns'
 
-import * as path from 'path'
-
 interface EcsStackPros extends StackProps {
-    region: string,
-    accountId: string,
-    accountName: string,
-    envName: string,
+  region: string,
+  accountId: string,
+  accountName: string,
+  envName: string,
 }
 
 export class EcsStack extends Stack {
-    constructor(scope: Construct, id: string, props: EcsStackPros) {
-        const { region, accountId, accountName } = props
-        const updatedProps = {
-            env: {
-                region: region,
-                account: accountId,
-            },
-            ...props
-        }
-        super(scope, id, updatedProps)
+  constructor(scope: Construct, id: string, props: EcsStackPros) {
+    const { region, accountId, accountName, envName } = props
+    const updatedProps = {
+      env: {
+        region: region,
+        account: accountId,
+      },
+      ...props
+    }
+    super(scope, id, updatedProps)
 
-        const bucketName = `aws-cdk-ecs-output-${accountName}`
-        const vpc = ec2.Vpc.fromLookup(this, 'vpc', {
-            vpcName: `vpc-${accountName}`
-        })
+    const bucketName = `aws-cdk-ecs-output-${accountName}`
+    const vpc = ec2.Vpc.fromLookup(this, 'vpc', {
+      vpcName: `vpc-${accountName}`
+    })
 
     //Task Execution Role
     const ecsExecutionRole = new iam.Role(this, 'ecsExecutionRole', {
-        assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-        managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
-        ],
-      })    
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
+      ],
+    })
+
+    ecsExecutionRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'elasticfilesystem:DescribeMountTargets',
+        'elasticfilesystem:ClientMount',
+        'elasticfilesystem:ClientWrite'
+      ],
+      resources: ['*'],
+    }))
 
     /**
      * Permission for ecs task
      */
     const ecsTaskRole = new iam.Role(this, 'ecsTaskRole', {
-        assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-        managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
-        ]
-    })      
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+      ]
+    })
 
     //Bucket policy to allow read+write
     ecsTaskRole.addToPolicy(new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          's3:Get*',
-          's3:ListBucket*',
-          's3:PutObject*'
-        ],
-        resources: [
-          `arn:aws:s3:::${bucketName}`,
-          `arn:aws:s3:::${bucketName}/*`
-        ]
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3:Get*',
+        's3:ListBucket*',
+        's3:PutObject*'
+      ],
+      resources: [
+        `arn:aws:s3:::${bucketName}`,
+        `arn:aws:s3:::${bucketName}/*`
+      ]
     }))
 
+    ecsTaskRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'elasticfilesystem:DescribeMountTargets',
+        'elasticfilesystem:ClientMount',
+        'elasticfilesystem:ClientWrite'
+      ],
+      resources: ['*'],
+    }))
 
     //Events bridge rule role
     const eventsRole = new iam.Role(this, 'eventsRuleRole', {
       assumedBy: new iam.ServicePrincipal('events.amazonaws.com')
     })
     eventsRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceEventsRole'))
-   
+
     //Granting ECS role permission
     ecsExecutionRole.grantPassRole(eventsRole)
     ecsTaskRole.grantPassRole(eventsRole)
@@ -101,13 +118,14 @@ export class EcsStack extends Stack {
         }
       ]
     })
-    
+
     const ecrRepoName = process.env.ECR_REPOSITORY || ''
     if (ecrRepoName == '') {
       throw new Error(`Cannot find ECR_REPOSITORY`)
     }
 
-    const ecrRepo = ecr.Repository.fromRepositoryName(this, 'ecrrepo', ecrRepoName)
+    // const ecrRepo = ecr.Repository.fromRepositoryName(this, 'ecrrepo', ecrRepoName)
+    const ecrRepo = ecr.Repository.fromRepositoryArn(this, 'ecrrepo', `arn:aws:ecr:${region}:054671736399:repository/${ecrRepoName}`)
 
     const imageTags = process.env.IMAGE_TAG || 'none'
 
@@ -125,7 +143,7 @@ export class EcsStack extends Stack {
       {
         sourceVolume: 'efs',
         containerPath: '/mnt/data',
-        readOnly: false        
+        readOnly: false
       }
     )
 
@@ -135,19 +153,22 @@ export class EcsStack extends Stack {
     })
 
     //Security Group
-    const sg = new ec2.SecurityGroup(this, 'EcsEgressSg', {
+    const sg = new ec2.SecurityGroup(this, 'EcsSg', {
       vpc,
       allowAllOutbound: true,
       description: 'Allows all outbound traffic to facilitate s3Copy'
     })
 
+    sg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(2049), 'data within the vpc')
+
     /**
-     * Events Bridge spins up ECS Task for archive bucket
+     * Events Bridge spins up ECS Task
      */
-    const targetArchive = new eventTarget.EcsTask({
+    const target = new eventTarget.EcsTask({
       cluster,
       taskDefinition,
       securityGroups: [sg],
+      assignPublicIp: false,
       subnetSelection: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
       },
@@ -157,6 +178,12 @@ export class EcsStack extends Stack {
         {
           containerName: container.containerName,
           environment: [
+            {
+              name: 'S3_BUCKET', value: bucketName
+            },
+            {
+              name: 'ENVIRONMENT_NAME', value: envName
+            },
           ]
         },
       ],
@@ -165,10 +192,10 @@ export class EcsStack extends Stack {
     /**
      * Cron job trigger backup to archive bucket
      */
-    new events.Rule(this, "cronJobTriggerArchive", {
+    new events.Rule(this, "cronJobTriggerECS", {
       //1:00AM AEST - temporary
-      schedule: events.Schedule.cron({minute: '0', hour: '15'}),
-      targets: [targetArchive],
+      schedule: events.Schedule.cron({ minute: '0', hour: '15' }),
+      targets: [target],
       description: 'Runs daily at specific time',
     })
 
@@ -182,12 +209,12 @@ export class EcsStack extends Stack {
         detailType: ["ECS Task State Change"],
         detail: {
           "containers": {
-            "exitCode": [1, 137, 139, 255]
+            "exitCode": [1, 32, 137, 139, 255]
           },
           "lastStatus": [
             "STOPPED"
           ],
-          "stoppedReason":[
+          "stoppedReason": [
             "Essential container in task exited"
           ],
           "taskDefinitionArn": [
@@ -200,6 +227,6 @@ export class EcsStack extends Stack {
 
     const snsTopic = sns.Topic.fromTopicArn(this, 'failedSNSTopic', `arn:aws:sns:${region}:${accountId}:aws-cdk-ecs-demo`)
     //Add SNS as target
-    filterFailedECSRule.addTarget(new eventTarget.SnsTopic(snsTopic))    
-}
+    filterFailedECSRule.addTarget(new eventTarget.SnsTopic(snsTopic))
+  }
 }
