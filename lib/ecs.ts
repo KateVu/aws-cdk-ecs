@@ -8,8 +8,6 @@ import * as eventTarget from 'aws-cdk-lib/aws-events-targets'
 import * as events from 'aws-cdk-lib/aws-events'
 import * as sns from 'aws-cdk-lib/aws-sns'
 
-import * as path from 'path'
-
 interface EcsStackPros extends StackProps {
   region: string,
   accountId: string,
