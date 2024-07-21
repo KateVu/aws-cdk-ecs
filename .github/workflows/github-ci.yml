@@ -28,14 +28,14 @@ jobs:
       ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
       REGION: 'ap-southeast-2'
       ACCOUNT_NAME: 'sandpit1'
-      aws_account_id: '722141136946' 
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_SANDPIT1 }} 
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-deployment-role
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
       - name: run build
@@ -54,7 +54,7 @@ jobs:
     env:
       ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
       ACCOUNT_NAME: 'sandpit3'
-      aws_account_id: '054671736399' 
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_SANDPIT3 }} 
 
     outputs:
       image_tag: ${{ steps.build-publish.outputs.image_tag }}
@@ -67,7 +67,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-deployment-role
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
       - name: prepare ECR repo name based on the Github repository
@@ -115,17 +115,18 @@ jobs:
     env:
       ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
       ACCOUNT_NAME: 'sandpit1'
-      aws_account_id: '722141136946' 
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_SANDPIT1 }} 
       ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
       IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
-      FILE_SYSTEM_ID: 'fs-0aa84f2de413ca4aa'
+      AWS_SHARED_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_SANDPIT3 }}
+      MAIN_APP_STACK: 'ec2-efs-main'
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-deployment-role
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
       - name: deploy
@@ -150,17 +151,18 @@ jobs:
     env:
       ENVIRONMENT_NAME: ${{ needs.get_branch_name.outputs.branch }}
       ACCOUNT_NAME: 'sandpit2'
-      aws_account_id: '354334841216' 
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_SANDPIT2 }} 
       ECR_REPOSITORY: ${{ needs.build_docker.outputs.repository }}
       IMAGE_TAG: ${{ needs.get_branch_name.outputs.branch }}-${{ github.run_id }}
-      FILE_SYSTEM_ID: 'fs-0bf5947b7d10d7df6'
+      AWS_SHARED_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID_SANDPIT3 }}
+      MAIN_APP_STACK: 'ec2-efs-main'
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-demo
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-deployment-role
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
       - name: deploy
