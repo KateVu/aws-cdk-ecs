@@ -1,4 +1,4 @@
-import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
+import { Fn, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as iam from 'aws-cdk-lib/aws-iam'
@@ -93,10 +93,13 @@ export class EcsStack extends Stack {
     //Granting ECS role permission
     ecsExecutionRole.grantPassRole(eventsRole)
     ecsTaskRole.grantPassRole(eventsRole)
-    const importedFileSystemID = process.env.FILE_SYSTEM_ID || ''
-    if (importedFileSystemID == '') {
-      throw new Error(`Cannot find EFS File system ID`)
+    const main_app_stack = process.env.MAIN_APP_STACK || ''
+
+    if (main_app_stack == '') {
+      throw new Error(`Cannot get MAIN_APP_STACK from env variable, abort`)
     }
+
+    const importedFileSystemID = Fn.importValue(`${main_app_stack}-efs-id`)
 
     /**
      * Task definition
@@ -124,8 +127,8 @@ export class EcsStack extends Stack {
       throw new Error(`Cannot find ECR_REPOSITORY`)
     }
 
-    // const ecrRepo = ecr.Repository.fromRepositoryName(this, 'ecrrepo', ecrRepoName)
-    const ecrRepo = ecr.Repository.fromRepositoryArn(this, 'ecrrepo', `arn:aws:ecr:${region}:054671736399:repository/${ecrRepoName}`)
+    const aws_shared_account_id = process.env.AWS_SHARED_ACCOUNT_ID || 'none'
+    const ecrRepo = ecr.Repository.fromRepositoryArn(this, 'ecrrepo', `arn:aws:ecr:${region}:${aws_shared_account_id}:repository/${ecrRepoName}`)
 
     const imageTags = process.env.IMAGE_TAG || 'none'
 
@@ -190,18 +193,16 @@ export class EcsStack extends Stack {
       propagateTags: ecs.PropagatedTagSource.TASK_DEFINITION
     })
     /**
-     * Cron job trigger backup to archive bucket
+     * Cron job launch Fargate task
      */
     new events.Rule(this, "cronJobTriggerECS", {
-      //1:00AM AEST - temporary
-      schedule: events.Schedule.cron({ minute: '0', hour: '15' }),
+      schedule: events.Schedule.cron({ minute: '0', hour: '3' }),
       targets: [target],
       description: 'Runs daily at specific time',
     })
 
     /**
-     * Event bridge rule for failed AWS Batch which has SNS above as target
-     * Copy rqp-rds-backups-to-s3 repo
+     * Notify SNS if fails
      */
     const filterFailedECSRule = new events.Rule(this, "filterFailedEFSBackup", {
       eventPattern: {
