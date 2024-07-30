@@ -45,8 +45,6 @@ jobs:
   # Docker image build and publish
   build_docker:
     runs-on: [linux, self-hosted, demo]
-    # container:
-    #   image: 'node:20'    
     needs:
       - get_branch_name
       - build_and_test
@@ -64,12 +62,12 @@ jobs:
       repository: ${{ steps.get_repo_name.outputs.ECR_REPO_NAME }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-deployment-role
+          role-to-assume: arn:aws:iam::${{ env.aws_account_id }}:role/github-actions-deployment-role
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.REGION }}
       - name: prepare ECR repo name based on the Github repository
@@ -86,7 +84,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
         with:
-          registries: ${{ env.AWS_ACCOUNT_ID }}
+          registries: ${{ env.aws_account_id }}
           mask-password: "true" # see: https://github.com/aws-actions/amazon-ecr-login#docker-credentials
 
       - name: Build, tag, and push image to Amazon ECR
