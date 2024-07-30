@@ -62,7 +62,7 @@ jobs:
       repository: ${{ steps.get_repo_name.outputs.ECR_REPO_NAME }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
