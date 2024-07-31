@@ -44,7 +44,7 @@ jobs:
 
   # Docker image build and publish
   build_docker:
-    runs-on: [linux, self-hosted, demo]
+    runs-on: [linux23, self-hosted, demo]
     needs:
       - get_branch_name
       - build_and_test
