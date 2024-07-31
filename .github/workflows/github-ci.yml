@@ -8,7 +8,7 @@ env:
 concurrency: ${{ github.workflow }}-${{ github.ref }}-pipeline
 jobs:
   get_branch_name:
-    runs-on: [linux23, self-hosted, demo]
+    runs-on: [linux, self-hosted, demo]
     steps: 
       - shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
