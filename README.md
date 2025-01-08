@@ -1,5 +1,8 @@
 # aws-cdk-vpc-efs
 
+## Architecture
+<img width="844" alt="image" src="https://github.com/user-attachments/assets/fa8884d2-a1b6-47a3-a1e3-b6d335ef9433" />
+
 
 ## Getting started
 ### Prerequisites: 
